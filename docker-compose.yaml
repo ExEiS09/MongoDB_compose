@@ -1,0 +1,129 @@
+version: '3.7'
+
+services:
+
+  consul-agent-1: &consul-agent
+    image: consul:latest
+    networks:
+      - mongo-test
+    command: "agent -retry-join consul-server-bootstrap -client 0.0.0.0 -enable-script-checks"
+
+  consul-agent-2:
+    <<: *consul-agent
+
+  consul-agent-3:
+    <<: *consul-agent
+
+  consul-server-1: &consul-server
+    <<: *consul-agent
+    command: "agent -server -retry-join consul-server-bootstrap -client 0.0.0.0 -enable-script-checks"
+
+  consul-server-2:
+    <<: *consul-server
+
+  consul-server-bootstrap:
+    <<: *consul-agent
+    ports:
+      - "8400:8400"
+      - "8500:8500"
+      - "8600:8600"
+      - "8600:8600/udp"
+    command: "agent -server -bootstrap-expect 3 -ui -client 0.0.0.0 -enable-script-checks"
+
+  mongo0:
+    build: 
+      context: ./MONGO
+    depends_on:
+      - consul-server-1
+    container_name: mongo0
+    restart: always
+    environment:
+      CLUSTER: mongo0,mongo1,mongo2
+      CONTAINER_NAME: mongo0
+      ADMIN_NAME: rofl
+      ADMIN_PASS: roflo
+      RS_NAME: rs0
+      BASE_NAME: azaza
+      BASE_USER: azaza
+      BASE_PASSWORD: uhtyblyad
+    volumes:
+       - db1-data:/media/data/mongodb
+       - db1-logs:/media/data/mongodb/logs
+    ports:
+      - "27018:27017"
+    networks:
+      - mongo-test
+
+  mongo1:
+    build:
+      context: ./MONGO/
+    depends_on:
+      - consul-server-1
+    container_name: mongo1
+    restart: always
+    environment:
+      CLUSTER: mongo0,mongo1,mongo2
+      ADMIN_NAME: rofl
+      ADMIN_PASS: roflo
+      RS_NAME: rs0
+      BASE_NAME: azaza
+      BASE_USER: azaza
+      BASE_PASSWORD: uhtyblyad
+      CONTAINER_NAME: mongo1
+    volumes:
+      - db2-data:/media/data/mongodb
+      - db2-logs:/media/data/mongodb/logs
+    ports:
+      - "27019:27017"
+    networks:
+      - mongo-test
+
+  mongo2:
+    build:
+      context: ./MONGO/
+    depends_on:
+      - consul-server-1
+    container_name: mongo2
+    restart: always
+    environment:
+      CLUSTER: mongo0,mongo1,mongo2
+      ADMIN_NAME: rofl
+      ADMIN_PASS: roflo
+      RS_NAME: rs0
+      BASE_NAME: azaza
+      BASE_USER: azaza
+      BASE_PASSWORD: uhtyblyad
+      CONTAINER_NAME: mongo2
+    volumes:
+      - db3-data:/media/data/mongodb
+      - db3-logs:/media/data/mongodb/logs
+    ports:
+      - "27020:27017"
+    networks:
+      - mongo-test
+
+  mongo-backs:
+    build:
+      context: ./MONGO_BACKUP/
+    container_name: backups
+    restart: always
+    environment:
+      CLUSTER: mongo0,mongo1,mongo2
+      ADMIN_NAME: rofl
+      ADMIN_PASSWD: roflo
+    volumes:
+      - db-backups:/media/data/mongodb/mongodb
+    networks:
+      - mongo-test
+
+networks:
+  mongo-test:
+
+volumes:
+  db1-data:
+  db1-logs:
+  db2-data:
+  db2-logs:
+  db3-data:
+  db3-logs:
+  db-backups:
